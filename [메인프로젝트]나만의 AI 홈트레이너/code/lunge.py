@@ -7,6 +7,10 @@ from PIL import ImageFont, Image, ImageDraw
 import mediapipe as mp
 import time
 from ultralytics import YOLO
+import requests
+import io
+import sounddevice as sd
+from scipy.io.wavfile import read
 
 label = ['정자세', '오자세']
 model = YOLO('yolov5/yolo11n.pt')
@@ -17,6 +21,35 @@ font = ImageFont.truetype(font_path, 20)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
+
+# OpenAI와 Typecast API 키 설정
+API_TOKEN = 'API_key'
+HEADERS = {'Authorization': f'Bearer {API_TOKEN}'}
+
+num_list = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱']
+
+def speak(text): 
+    r = requests.post('https://typecast.ai/api/speak', headers=HEADERS, json={
+        'text': text,
+        'lang': 'auto',
+        'actor_id': 'id',
+        'xapi_hd': True,
+        'model_version': 'latest'
+    })
+    speak_url = r.json()['result']['speak_v2_url']
+    
+    for _ in range(60):
+        r = requests.get(speak_url, headers=HEADERS)
+        ret = r.json()['result']
+        
+        if ret['status'] == 'done':
+            time.sleep(1)
+            audio_data = requests.get(ret['audio_download_url']).content
+            audio_stream = io.BytesIO(audio_data)
+            sample_rate, audio = read(audio_stream)
+            sd.play(audio, samplerate=sample_rate)
+            sd.wait()
+            break
 
 def lunge_info(st):
     st.markdown("<h1 style='text-align: center;'>🏋️‍♂️ AI 홈트레이너</h1>", unsafe_allow_html=True)
@@ -72,7 +105,7 @@ def calculate_angle(point_a, point_b, point_c):
     magnitude_bc = math.sqrt(sum(b**2 for b in bc)) 
     if magnitude_ab == 0 or magnitude_bc == 0:
         return 0.0
-    return math.degrees(math.acos(dot_product / (magnitude_ab * magnitude_bc)))
+    return math.degrees(math.acos(dot_product / (magnitude_ab * magnitude_bc))) 
 
 
 def flip_landmarks(landmarks):
@@ -128,7 +161,7 @@ def run_lunge_session(st, YOLO, info):
     st.markdown("<h1 style='text-align: center;'>런지</h1>", unsafe_allow_html=True)
 
     # 스트리밍 비디오 피드 설정
-    video_url = "C:/ai5/본프로젝트/메인/영상/런지/현아6.mp4"
+    video_url = "C:/ai5/본프로젝트/메인/영상/런지/현아8.mp4"
     ip_webcam_url = "http://192.168.0.98:8080/video"    
 
     # 채팅 메시지 창
@@ -249,9 +282,11 @@ def run_lunge_session(st, YOLO, info):
                                 if correct_ratio >= correct_threshold:
                                     lunge_count += 1
                                     total_history = []
+                                    speak(f'{num_list[lunge_count-1]}')
                                     if lunge_count == target_reps:
                                         completed_sets += 1
                                         lunge_count = 0
+                                        speak(f"{completed_sets}세트 완료")
                                         
                                         if completed_sets == target_sets:
                                             st.success("모든 세트를 완료했습니다! 수고하셨습니다!")
@@ -259,10 +294,12 @@ def run_lunge_session(st, YOLO, info):
                                             cv2.destroyAllWindows()
                                             results_dict["정자세 횟수"] = completed_sets * target_reps
                                             return results_dict          
-                                elif correct_ratio <= 0.5:
+                                elif correct_ratio <= 0.3:
                                     wrong_count += 1
+                                    lunge_count -= 1
                                     total_history = []
-                        elif avg_knee_angle >= 90 and avg_knee_angle<= 100:
+                                    speak('오자세')
+                        elif avg_knee_angle >= 92 and avg_knee_angle<= 100:
                             state = '다운'
                             
                         print('각도 : ', avg_knee_angle)

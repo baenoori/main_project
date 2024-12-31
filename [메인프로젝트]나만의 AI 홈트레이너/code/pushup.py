@@ -7,6 +7,10 @@ from PIL import ImageFont, Image, ImageDraw
 import mediapipe as mp
 import time
 from ultralytics import YOLO
+import requests
+import io
+import sounddevice as sd
+from scipy.io.wavfile import read
 
 label = ['정자세', '오자세']
 model = YOLO('yolov5/yolo11n.pt')
@@ -16,6 +20,35 @@ font = ImageFont.truetype(font_path, 20)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
+
+# OpenAI와 Typecast API 키 설정
+API_TOKEN = 'API_key'
+HEADERS = {'Authorization': f'Bearer {API_TOKEN}'}
+
+num_list = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱']
+
+def speak(text): 
+    r = requests.post('https://typecast.ai/api/speak', headers=HEADERS, json={
+        'text': text,
+        'lang': 'auto',
+        'actor_id': 'id',
+        'xapi_hd': True,
+        'model_version': 'latest'
+    })
+    speak_url = r.json()['result']['speak_v2_url']
+    
+    for _ in range(60):
+        r = requests.get(speak_url, headers=HEADERS)
+        ret = r.json()['result']
+        
+        if ret['status'] == 'done':
+            time.sleep(1)
+            audio_data = requests.get(ret['audio_download_url']).content
+            audio_stream = io.BytesIO(audio_data)
+            sample_rate, audio = read(audio_stream)
+            sd.play(audio, samplerate=sample_rate)
+            sd.wait()
+            break
 
 def pushup_info(st):
     st.markdown("<h1 style='text-align: center;'>🏋️‍♂️ AI 홈트레이너</h1>", unsafe_allow_html=True)
@@ -95,7 +128,7 @@ def run_pushup_session(st, YOLO, info):
     pushup_wrong_count = 0  # 푸시업 오자세 개수
     down_position = False  # 몸이 아래로 내려간 상태 여부
     total_history = []  # 전체 프레임의 예측 결과 저장
-    correct_threshold = 0.5  # 정자세 비율 기준 (70%)
+    correct_threshold = 0.7  # 정자세 비율 기준 (70%)
     current_state = "대기"  # 초기 상태는 "대기"
     
     # 세트 및 횟수 설정
@@ -123,7 +156,7 @@ def run_pushup_session(st, YOLO, info):
     st.markdown("<h1 style='text-align: center;'>푸시업</h1>", unsafe_allow_html=True)
 
     # 스트리밍 비디오 피드 설정
-    video_url = "C:/ai5/본프로젝트/메인/영상/푸시업/사영2.mp4"
+    video_url = "C:/ai5/본프로젝트/메인/영상/푸시업/사영4.mp4"
     ip_webcam_url = "http://192.168.0.98:8080/video"    
 
     # 채팅 메시지 창
@@ -273,10 +306,13 @@ def run_pushup_session(st, YOLO, info):
                                     pushup_count += 1
                                     # correct_ratio를 새로 산출하기 위해 기록 초기화
                                     total_history = []  # 새로운 푸시업을 기준으로 기록 초기화
+                                    speak(f'{num_list[pushup_count-1]}')
+                                    
                                     # 목표 횟수를 달성한 경우
                                     if pushup_count == target_reps:
                                         completed_sets += 1
                                         pushup_count = 0  # 횟수 초기화
+                                        speak(f"{completed_sets}세트 완료")
 
                                         if completed_sets == target_sets:  # 모든 세트 완료
                                             st.success("모든 세트를 완료했습니다! 수고하셨습니다!")
@@ -286,6 +322,8 @@ def run_pushup_session(st, YOLO, info):
                                             return results_dict
                                 else:
                                     pushup_wrong_count +=1
+                                    speak('오자세')
+                                    total_history = []
                         elif avg_elbow_angle >= 40:  # "다운" 상태
                             current_state = "다운"
 

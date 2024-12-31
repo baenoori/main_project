@@ -78,8 +78,8 @@ def camera_info(st, video_path):
         # 센서 데이터 확인
         cammera_info = monitor_sensor_data()
         if cammera_info == '확인되었습니다.':
-            text_placeholder.markdown('카메라 설정이 확인되었습니다. 5초 뒤 운동을 시작합니다.', unsafe_allow_html=True)
-            # speak('카메라 설정이 확인되었습니다. 10초 뒤 운동을 시작합니다.')
+            text_placeholder.markdown('카메라 설정이 확인되었습니다. 3초 뒤 운동을 시작합니다.', unsafe_allow_html=True)
+
             cap.release()
             frame_placeholder.empty()
             text_placeholder.empty()
@@ -94,7 +94,7 @@ def camera_info(st, video_path):
                 return
 
             # 타이머 설정 (5초 카운트다운)
-            countdown_start = 5
+            countdown_start = 3
             start_time = time.time()
 
             while True:
@@ -121,6 +121,12 @@ def camera_info(st, video_path):
                     # BGR에서 RGB로 변환 (Streamlit은 RGB 사용)
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     video_placeholder.image(frame, channels="RGB", use_container_width=True)
+                    
+                    # 프레임 속도 제어
+                    desired_fps = 50  # 원하는 FPS
+                    frame_delay = 1 / desired_fps
+                    time.sleep(frame_delay)
+                    
                 else:
                     break  # 영상 끝
 

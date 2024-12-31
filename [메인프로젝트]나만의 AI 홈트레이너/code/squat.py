@@ -8,6 +8,10 @@ import mediapipe as mp
 import time
 from ultralytics import YOLO
 from collections import namedtuple
+import requests
+import io
+import sounddevice as sd
+from scipy.io.wavfile import read
 
 label = ['정자세', '오자세']
 model = YOLO('yolov5/yolo11n.pt')
@@ -17,6 +21,35 @@ font = ImageFont.truetype(font_path, 20)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
+
+# OpenAI와 Typecast API 키 설정
+API_TOKEN = 'API_key'
+HEADERS = {'Authorization': f'Bearer {API_TOKEN}'}
+
+num_list = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱']
+
+def speak(text): 
+    r = requests.post('https://typecast.ai/api/speak', headers=HEADERS, json={
+        'text': text,
+        'lang': 'auto',
+        'actor_id': 'id',
+        'xapi_hd': True,
+        'model_version': 'latest'
+    })
+    speak_url = r.json()['result']['speak_v2_url']
+    
+    for _ in range(60):
+        r = requests.get(speak_url, headers=HEADERS)
+        ret = r.json()['result']
+        
+        if ret['status'] == 'done':
+            time.sleep(1)
+            audio_data = requests.get(ret['audio_download_url']).content
+            audio_stream = io.BytesIO(audio_data)
+            sample_rate, audio = read(audio_stream)
+            sd.play(audio, samplerate=sample_rate)
+            sd.wait()
+            break
 
 def squat_info(st):
     st.markdown("<h1 style='text-align: center;'>🏋️‍♂️ AI 홈트레이너</h1>", unsafe_allow_html=True)
@@ -109,7 +142,7 @@ def flip_landmarks(landmarks):
 def run_squat_session(st, YOLO, info):
     # 초기 변수 설정
     total_history = []  # 전체 프레임의 예측 결과 저장
-    correct_threshold = 0.5  # 정자세 비율 기준 (70%)
+    correct_threshold = 0.7  # 정자세 비율 기준 (70%)
     squat_count = 0
     squat_wrong_count = 0
     current_state = "업"
@@ -140,7 +173,8 @@ def run_squat_session(st, YOLO, info):
     st.markdown("<h1 style='text-align: center;'>스쿼트</h1>", unsafe_allow_html=True)
 
     # 스트리밍 비디오 피드 설정
-    video_url = "C:/ai5/본프로젝트/메인/영상/스쿼트/사영2.mp4"
+    # video_url = "C:/ai5/본프로젝트/메인/영상/스쿼트/사영2.mp4"
+    video_url = "C:/ai5/본프로젝트/메인/영상/스쿼트/누리5.mp4"
     # video_url = "C:/ai5/본프로젝트/메인/_data/스쿼트/정자세/스쿼트4.mp4"
     ip_webcam_url = "http://192.168.0.98:8080/video"    
 
@@ -312,20 +346,24 @@ def run_squat_session(st, YOLO, info):
                         # 정자세 비율 계산
                         correct_ratio = sum(total_history) / len(total_history)
                         print(f"Correct Ratio: {correct_ratio:.2f}")
+                        print(f"right_knee_angle: {right_knee_angle }")
 
-                        if right_knee_angle > 85:  # 무릎 각도가 20도 미만일 때 "업" 상태
+                        if right_knee_angle > 70:  # 무릎 각도가 20도 미만일 때 "업" 상태
                             if current_state == "업":  # 이전 상태가 "업"이 아니었다면 전환
                                 current_state = "다운"
 
-                        elif right_knee_angle <= 85:  # 무릎 각도가 40도 이상일 때 "다운" 상태
+                        elif right_knee_angle <= 70:  # 무릎 각도가 40도 이상일 때 "다운" 상태
                             if current_state == "다운":
                                 if correct_ratio >= correct_threshold:
                                     squat_count += 1
                                     current_state = "업"
+                                    total_history = []
+                                    speak(f'{num_list[squat_count-1]}')
 
                                     if squat_count == target_reps:
                                         completed_sets += 1
                                         squat_count = 0
+                                        speak(f"{num_list[completed_sets-1]}세트 완료")
 
                                         if completed_sets == target_sets:
                                             st.success("모든 세트를 완료했습니다! 수고하셨습니다!")
@@ -335,6 +373,9 @@ def run_squat_session(st, YOLO, info):
                                             return results_dict
                                 else:
                                     squat_wrong_count += 1
+                                    total_history = []
+                                    current_state  = '업'
+                                    speak('오자세')
                                 total_history = []  # 새로운 푸시업을 기준으로 기록 초기화
 
                         # "오자세"인 경우 피드백 생성 및 출력

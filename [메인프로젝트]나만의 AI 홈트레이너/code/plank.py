@@ -7,6 +7,10 @@ from PIL import ImageFont, Image, ImageDraw
 import mediapipe as mp
 import time
 from ultralytics import YOLO
+import requests
+import io
+import sounddevice as sd
+from scipy.io.wavfile import read
 
 label = ['정자세', '오자세']
 model = YOLO('yolov5/yolo11n.pt')
@@ -16,6 +20,35 @@ font = ImageFont.truetype(font_path, 20)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
+
+# OpenAI와 Typecast API 키 설정
+API_TOKEN = 'API_key'
+HEADERS = {'Authorization': f'Bearer {API_TOKEN}'}
+
+num_list = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱']
+
+def speak(text): 
+    r = requests.post('https://typecast.ai/api/speak', headers=HEADERS, json={
+        'text': text,
+        'lang': 'auto',
+        'actor_id': 'id',
+        'xapi_hd': True,
+        'model_version': 'latest'
+    })
+    speak_url = r.json()['result']['speak_v2_url']
+    
+    for _ in range(60):
+        r = requests.get(speak_url, headers=HEADERS)
+        ret = r.json()['result']
+        
+        if ret['status'] == 'done':
+            time.sleep(1)
+            audio_data = requests.get(ret['audio_download_url']).content
+            audio_stream = io.BytesIO(audio_data)
+            sample_rate, audio = read(audio_stream)
+            sd.play(audio, samplerate=sample_rate)
+            sd.wait()
+            break
 
 def plank_info(st):
     st.markdown("<h1 style='text-align: center;'>🏋️‍♂️ AI 홈트레이너</h1>", unsafe_allow_html=True)
@@ -129,7 +162,8 @@ def run_plank_session(st, YOLO, info):
     st.markdown("<h1 style='text-align: center;'>플랭크</h1>", unsafe_allow_html=True)
 
     # 스트리밍 비디오 피드 설정
-    video_url = "C:/ai5/본프로젝트/메인/영상/플랭크/사영1.mp4"
+    # video_url = "C:/ai5/본프로젝트/메인/영상/플랭크/사영1.mp4"
+    video_url = "C:/ai5/본프로젝트/메인/영상/플랭크/호정2.mp4"
     ip_webcam_url = "http://192.168.0.98:8080/video"    
 
     # 채팅 메시지 창
@@ -178,7 +212,7 @@ def run_plank_session(st, YOLO, info):
             x1, y1, x2, y2 = map(int, best_box.xyxy[0])
             person_roi = frame[y1:y2, x1:x2]
 
-            with mp_pose.Pose(static_image_mode=False, model_complexity=2) as pose:
+            with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
                 results_pose = pose.process(cv2.cvtColor(person_roi, cv2.COLOR_BGR2RGB))
                 if results_pose.pose_landmarks:
                     try:
@@ -228,12 +262,15 @@ def run_plank_session(st, YOLO, info):
                                 elapsed_time = time.time() - start_time
                                 plank_time_correct += elapsed_time
                                 start_time = time.time()
+                                total_history = []
+                                # speak(f'{int(plank_time_correct)}초')
 
                                 # 세트 완료 처리
                                 while plank_time_correct >= target_time:  # 초과된 시간도 계산에 반영
                                     completed_sets += 1
                                     total_history = []
                                     plank_time_correct -= target_time  # 초과된 시간을 다음 세트로 넘김
+                                    speak(f"{completed_sets}세트 완료")
 
                                     if completed_sets >= target_sets:
                                         st.success("모든 세트를 완료했습니다! 수고하셨습니다!")
@@ -241,11 +278,17 @@ def run_plank_session(st, YOLO, info):
                                         cv2.destroyAllWindows()
                                         return results_dict
                         else:
-                            if is_holding:
+                            if not is_holding:
+                                start_time = time.time()
+                                is_holding = True
+                            else:
                                 elapsed_time = time.time() - start_time
                                 plank_time_wrong += elapsed_time
                                 is_holding = False
                                 start_time = None
+                                total_history = []
+                                if int(plank_time_wrong)+9 % 10 == 0:
+                                    speak('오자세')
 
                         # "오자세"인 경우 피드백 생성 및 출력
                         if prediction_text == "오자세":
@@ -302,7 +345,7 @@ def run_plank_session(st, YOLO, info):
                         # mp_drawing.draw_landmarks(person_roi, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
                         
                         # 플랭크 시간 및 상태 출력
-                        time_placeholder.info(f"정자세 시간: {int(plank_time_correct)}s /{int(target_time)}s    플랭크 오자세 시간 : {plank_time_wrong}s    세트: {completed_sets}/{target_sets}")
+                        time_placeholder.info(f"정자세 시간: {int(plank_time_correct)}s /{int(target_time)}s    플랭크 오자세 시간 : {int(plank_time_wrong)}s    세트: {completed_sets}/{target_sets}")
                         # time_placeholder.info(f"정자세 시간: {int(plank_time_correct)}s /{int(target_time)}s   세트: {completed_sets}/{target_sets}")
 
                     except IndexError:
