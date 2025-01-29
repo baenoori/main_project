@@ -52,5 +52,5 @@
 - 휴대폰 카메라 연결을 위해 IP Webcam 어플 사용
 - streamlit으로 구현한 웹을 앱에서 볼 수 있도록 웹뷰 앱 구현
 
-시연 영상 : ([[메인프로젝트]나만의 AI 홈트레이너/notebooks/[최종팀프로젝트]나만의 AI 홈트레이너_배누리_시연영상.mp4](https://github.com/baenoori/main_project/blob/master/%5B%EB%A9%94%EC%9D%B8%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%5D%EB%82%98%EB%A7%8C%EC%9D%98%20AI%20%ED%99%88%ED%8A%B8%EB%A0%88%EC%9D%B4%EB%84%88/notebooks/%5B%EC%B5%9C%EC%A2%85%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%5D%EB%82%98%EB%A7%8C%EC%9D%98%20AI%20%ED%99%88%ED%8A%B8%EB%A0%88%EC%9D%B4%EB%84%88_%EB%B0%B0%EB%88%84%EB%A6%AC_%EC%8B%9C%EC%97%B0%EC%98%81%EC%83%81.mp4))
+시연 영상 : [[메인프로젝트]나만의 AI 홈트레이너/notebooks/[최종팀프로젝트]나만의 AI 홈트레이너_배누리_시연영상.mp4](https://github.com/baenoori/main_project/blob/master/%5B%EB%A9%94%EC%9D%B8%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%5D%EB%82%98%EB%A7%8C%EC%9D%98%20AI%20%ED%99%88%ED%8A%B8%EB%A0%88%EC%9D%B4%EB%84%88/notebooks/%5B%EC%B5%9C%EC%A2%85%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%5D%EB%82%98%EB%A7%8C%EC%9D%98%20AI%20%ED%99%88%ED%8A%B8%EB%A0%88%EC%9D%B4%EB%84%88_%EB%B0%B0%EB%88%84%EB%A6%AC_%EC%8B%9C%EC%97%B0%EC%98%81%EC%83%81.mp4)
 
